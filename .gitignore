@@ -1,0 +1,12 @@
+# Claude Code working directory – never commit
+.claude/
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db

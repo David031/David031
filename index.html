@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>David031 — GitHub Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #1c2128;
+      --border:   #30363d;
+      --accent:   #238636;
+      --blue:     #58a6ff;
+      --blue-dim: #1f6feb;
+      --text:     #e6edf3;
+      --dim:      #8b949e;
+      --red:      #f85149;
+      --yellow:   #d29922;
+      --purple:   #bc8cff;
+      --green:    #3fb950;
+      --radius:   10px;
+      --shadow:   0 4px 24px rgba(0,0,0,.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+    .topbar-brand svg { fill: var(--text); }
+    .topbar-spacer { flex: 1; }
+
+    /* Token auth widget */
+    #auth-widget {
+      display: flex; align-items: center; gap: 8px; font-size: 0.82rem;
+    }
+    #token-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.82rem;
+      width: 200px;
+      font-family: monospace;
+    }
+    #token-input:focus { outline: none; border-color: var(--blue-dim); }
+    #auth-btn {
+      background: var(--blue-dim);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #auth-btn:hover { background: var(--blue); }
+    #clear-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      border-radius: 6px; padding: 5px 10px; font-size: 0.82rem; cursor: pointer;
+    }
+    #clear-btn:hover { color: var(--red); border-color: var(--red); }
+    #auth-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; color: var(--dim);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+    .dot.green  { background: var(--green); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.red    { background: var(--red); }
+
+    #refresh-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      border-radius: 6px; padding: 5px 10px; font-size: 0.82rem; cursor: pointer;
+    }
+    #refresh-btn:hover { color: var(--text); border-color: var(--dim); }
+
+    /* ── Layout ── */
+    .page { max-width: 1120px; margin: 0 auto; padding: 28px 20px 48px; }
+
+    /* Profile header */
+    .profile-header {
+      display: flex; align-items: center; gap: 20px; margin-bottom: 28px;
+    }
+    .avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 3px solid var(--border); object-fit: cover;
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+    .profile-info h2 { font-size: 1.5rem; font-weight: 700; }
+    .profile-info .profile-bio { color: var(--dim); margin-top: 4px; font-size: 0.9rem; }
+    .profile-links { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+    .profile-links a { color: var(--blue); font-size: 0.82rem; text-decoration: none; }
+    .profile-links a:hover { text-decoration: underline; }
+
+    /* Summary stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-card .val {
+      font-size: 2rem; font-weight: 800; line-height: 1;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-card .lbl { font-size: 0.78rem; color: var(--dim); font-weight: 500; }
+
+    /* Main grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 720px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card.wide { grid-column: 1 / -1; }
+
+    .card-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--dim); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .card-title svg { fill: var(--dim); flex-shrink: 0; }
+
+    /* Chart containers */
+    .chart-wrap { position: relative; }
+    .chart-wrap canvas { max-height: 240px; }
+
+    /* Repo grid */
+    .repo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    .repo-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: border-color .2s;
+    }
+    .repo-card:hover { border-color: var(--blue-dim); }
+    .repo-card-header { display: flex; align-items: center; gap: 8px; }
+    .repo-card-header svg { fill: var(--dim); flex-shrink: 0; }
+    .repo-name {
+      font-weight: 600; font-size: 0.92rem; color: var(--blue);
+      text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .repo-name:hover { text-decoration: underline; }
+    .repo-private {
+      font-size: 0.67rem; padding: 1px 6px; border-radius: 10px;
+      border: 1px solid var(--border); color: var(--dim);
+      font-weight: 600; margin-left: auto; flex-shrink: 0;
+    }
+    .repo-desc { font-size: 0.82rem; color: var(--dim); line-height: 1.5; }
+    .repo-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+    .repo-meta-item {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.78rem; color: var(--dim);
+    }
+    .lang-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .repo-topics { display: flex; gap: 6px; flex-wrap: wrap; }
+    .topic {
+      font-size: 0.7rem; padding: 2px 8px;
+      background: rgba(56,139,253,.15); color: #79c0ff;
+      border-radius: 10px; border: 1px solid rgba(56,139,253,.2);
+    }
+
+    /* Commit activity heatmap */
+    .heatmap { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 6px; }
+    .heatmap-col { display: flex; flex-direction: column; gap: 3px; }
+    .heatmap-cell {
+      width: 11px; height: 11px; border-radius: 2px;
+      background: var(--border); flex-shrink: 0;
+    }
+    .heatmap-cell[data-level="1"] { background: #0e4429; }
+    .heatmap-cell[data-level="2"] { background: #006d32; }
+    .heatmap-cell[data-level="3"] { background: #26a641; }
+    .heatmap-cell[data-level="4"] { background: #39d353; }
+
+    /* Recent commits */
+    .commit-list { list-style: none; }
+    .commit-list li {
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .commit-list li:last-child { border-bottom: none; }
+    .commit-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+    .commit-sha { font-family: monospace; color: var(--blue); font-size: 0.78rem; text-decoration: none; }
+    .commit-sha:hover { text-decoration: underline; }
+    .commit-repo { color: var(--dim); font-size: 0.78rem; }
+    .commit-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .commit-meta { color: var(--dim); font-size: 0.75rem; margin-top: 2px; }
+
+    /* Loading / empty */
+    .loading { color: var(--dim); font-size: 0.85rem; animation: pulse 1.4s ease-in-out infinite; }
+    .empty { color: var(--dim); font-size: 0.85rem; padding: 8px 0; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+
+    /* Token notice */
+    #token-notice {
+      background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3);
+      border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;
+      font-size: 0.85rem; line-height: 1.6; color: #e3b341; display: none;
+    }
+    #token-notice a { color: #f0c441; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab {
+      background: none; border: 1px solid var(--border);
+      color: var(--dim); border-radius: 6px; padding: 5px 12px;
+      font-size: 0.82rem; cursor: pointer;
+    }
+    .tab.active { background: var(--blue-dim); color: #fff; border-color: var(--blue-dim); }
+
+    footer {
+      text-align: center; color: var(--dim); font-size: 0.78rem; margin-top: 32px;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+
+    /* Skeleton shimmer */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px; height: 14px; width: 100%; margin-bottom: 8px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <svg height="24" width="24" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    David031
+  </div>
+  <div class="topbar-spacer"></div>
+
+  <!-- Authentication widget -->
+  <div id="auth-widget">
+    <div id="auth-status"><span class="dot" id="auth-dot"></span><span id="auth-label">No token</span></div>
+    <input id="token-input" type="password" placeholder="GitHub PAT (for private repos)" autocomplete="off" />
+    <button id="auth-btn" onclick="saveToken()">Connect</button>
+    <button id="clear-btn" onclick="clearToken()" title="Remove stored token">Clear</button>
+    <button id="refresh-btn" onclick="loadAll()">&#8635; Refresh</button>
+  </div>
+</nav>
+
+<!-- ── Page ── -->
+<div class="page">
+
+  <!-- Private repo notice -->
+  <div id="token-notice">
+    <strong>Private repos not visible.</strong> Enter a GitHub Personal Access Token above to include private repositories.
+    Create one at <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">github.com/settings/tokens</a>
+    with <code>repo</code> scope.
+    <br><small style="opacity:.75">Your token is stored only in <em>this browser's</em> localStorage and is sent solely to <code>api.github.com</code>.
+    It is never committed to the repository or sent anywhere else. Click <strong>Clear</strong> to remove it at any time.</small>
+  </div>
+
+  <!-- Profile -->
+  <div class="profile-header">
+    <img id="avatar" class="avatar" src="" alt="avatar" />
+    <div class="profile-info">
+      <h2 id="profile-name">David031</h2>
+      <div class="profile-bio" id="profile-bio"></div>
+      <div class="profile-links" id="profile-links">
+        <a href="https://github.com/David031" target="_blank" rel="noopener">github.com/David031</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="val skeleton">&nbsp;</div><div class="lbl">Repositories</div></div>
+    <div class="stat-card"><div class="val skeleton">&nbsp;</div><div class="lbl">Stars Earned</div></div>
+    <div class="stat-card"><div class="val skeleton">&nbsp;</div><div class="lbl">Followers</div></div>
+    <div class="stat-card"><div class="val skeleton">&nbsp;</div><div class="lbl">Following</div></div>
+    <div class="stat-card"><div class="val skeleton">&nbsp;</div><div class="lbl">Public Gists</div></div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="main-grid">
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M1.5 1.75a.75.75 0 00-1.5 0v12.5a.75.75 0 001.5 0V1.75zM6 8a1 1 0 100-2 1 1 0 000 2zm-1-5.25a.75.75 0 011.5 0v8.5a.75.75 0 01-1.5 0v-8.5zM11 6a1 1 0 100-2 1 1 0 000 2zm-1-3.25a.75.75 0 011.5 0v8.5a.75.75 0 01-1.5 0v-8.5z"/></svg>
+        Language Breakdown
+      </div>
+      <div class="chart-wrap">
+        <canvas id="lang-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10.5 7.75a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zm1.43.75a4.002 4.002 0 01-7.86 0H.75a.75.75 0 010-1.5h3.32a4.001 4.001 0 017.86 0h3.32a.75.75 0 010 1.5h-3.32z"/></svg>
+        Commit Activity (last 52 weeks)
+      </div>
+      <div class="chart-wrap">
+        <canvas id="commit-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm1.5 11.5l-3.5-2V4h1.5v4.75l2.5 1.5-.5.75z"/></svg>
+        Repo Size Distribution
+      </div>
+      <div class="chart-wrap">
+        <canvas id="size-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z"/></svg>
+        Branch Status
+      </div>
+      <ul class="commit-list" id="branch-list"><li><span class="loading">Loading…</span></li></ul>
+    </div>
+
+  </div>
+
+  <!-- Contribution heatmap -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 16 16"><path d="M11.93 8.5a4.002 4.002 0 01-7.86 0H.75a.75.75 0 000 1.5h3.32a4.001 4.001 0 007.86 0h3.32a.75.75 0 000-1.5H11.93zM8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"/></svg>
+      Contribution Heatmap (commit counts by week)
+    </div>
+    <div id="heatmap-container"><span class="loading">Loading…</span></div>
+  </div>
+
+  <!-- Recent commits -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10.5 7.75a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zm1.43.75a4.002 4.002 0 01-7.86 0H.75a.75.75 0 010-1.5h3.32a4.001 4.001 0 017.86 0h3.32a.75.75 0 010 1.5h-3.32z"/></svg>
+      Recent Commits across all repos
+    </div>
+    <ul class="commit-list" id="commit-list"><li><span class="loading">Loading…</span></li></ul>
+  </div>
+
+  <!-- Repos section -->
+  <div style="margin-bottom:16px; display:flex; align-items:center; gap:12px;">
+    <div class="card-title" style="margin-bottom:0">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--dim)"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8z"/></svg>
+      My Projects
+    </div>
+    <div class="tabs" id="repo-tabs">
+      <button class="tab active" onclick="filterRepos('all',this)">All</button>
+      <button class="tab" onclick="filterRepos('public',this)">Public</button>
+      <button class="tab" onclick="filterRepos('private',this)">Private</button>
+      <button class="tab" onclick="filterRepos('forked',this)">Forks</button>
+    </div>
+  </div>
+  <div class="repo-grid" id="repo-grid"><div class="skeleton" style="height:120px;border-radius:8px"></div><div class="skeleton" style="height:120px;border-radius:8px"></div><div class="skeleton" style="height:120px;border-radius:8px"></div></div>
+
+</div><!-- end .page -->
+
+<footer>
+  <div style="margin-bottom:6px" id="footer-update"></div>
+  Data from <a href="https://docs.github.com/en/rest" target="_blank">GitHub REST API</a> ·
+  <a href="https://github.com/David031/David031" target="_blank">View on GitHub</a>
+</footer>
+
+<script>
+/* ── Config ── */
+const OWNER = 'David031';
+const STORAGE_KEY = 'gh_pat_david031';
+
+/* ── Language colours (subset) ── */
+const LANG_COLORS = {
+  JavaScript:'#f1e05a', TypeScript:'#3178c6', Python:'#3572A5',
+  HTML:'#e34c26', CSS:'#563d7c', Rust:'#dea584', Go:'#00ADD8',
+  Java:'#b07219', 'C++':'#f34b7d', C:'#555555', Ruby:'#701516',
+  Shell:'#89e051', Kotlin:'#A97BFF', Swift:'#ffac45', PHP:'#4F5D95',
+  Dart:'#00B4AB', Vue:'#41b883', Svelte:'#ff3e00', Dockerfile:'#384d54',
+  Makefile:'#427819', Lua:'#000080', Scala:'#c22d40', R:'#198CE7',
+};
+function langColor(l){ return LANG_COLORS[l] || '#8b949e'; }
+
+/* ── State ── */
+let allRepos = [];
+let langChart, commitChart, sizeChart;
+
+/* ── Token helpers ── */
+function getToken() { return localStorage.getItem(STORAGE_KEY) || ''; }
+function saveToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (t) { localStorage.setItem(STORAGE_KEY, t); document.getElementById('token-input').value = ''; }
+  setAuthStatus();
+  loadAll();
+}
+function clearToken() {
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById('token-input').value = '';
+  setAuthStatus();
+  loadAll();
+}
+function setAuthStatus() {
+  const tok = getToken();
+  const dot = document.getElementById('auth-dot');
+  const lbl = document.getElementById('auth-label');
+  if (tok) { dot.className='dot green'; lbl.textContent='Token active'; document.getElementById('token-notice').style.display='none'; }
+  else     { dot.className='dot yellow'; lbl.textContent='Public only'; document.getElementById('token-notice').style.display='block'; }
+}
+
+/* ── API helpers ── */
+function headers() {
+  const tok = getToken();
+  const h = { Accept:'application/vnd.github+json' };
+  if (tok) h['Authorization'] = `Bearer ${tok}`;
+  return h;
+}
+async function apiFetch(url) {
+  const r = await fetch(url, { headers: headers() });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText} (${url})`);
+  return r.json();
+}
+async function apiPaged(url, maxPages=5) {
+  let results = [], page = 1;
+  while (page <= maxPages) {
+    const sep = url.includes('?') ? '&' : '?';
+    const data = await apiFetch(`${url}${sep}per_page=100&page=${page}`);
+    if (!Array.isArray(data) || !data.length) break;
+    results = results.concat(data);
+    if (data.length < 100) break;
+    page++;
+  }
+  return results;
+}
+
+function timeAgo(d) {
+  const s = Math.floor((Date.now()-new Date(d))/1000);
+  if (s<60) return s+'s ago';
+  if (s<3600) return Math.floor(s/60)+'m ago';
+  if (s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ── Charts ── */
+const CHART_DEFAULTS = {
+  responsive:true, maintainAspectRatio:true,
+  plugins:{ legend:{ labels:{ color:'#8b949e', font:{size:11} } } },
+};
+function initCharts(){
+  Chart.defaults.color = '#8b949e';
+  Chart.defaults.borderColor = '#30363d';
+}
+
+function buildLangChart(repos) {
+  const counts = {};
+  repos.forEach(r => { if (r.language) counts[r.language]=(counts[r.language]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const labels = sorted.map(([l])=>l);
+  const data   = sorted.map(([,n])=>n);
+  const colors = labels.map(langColor);
+  if (langChart) langChart.destroy();
+  langChart = new Chart(document.getElementById('lang-chart'), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderColor:'#161b22', borderWidth:3 }] },
+    options:{
+      ...CHART_DEFAULTS,
+      plugins:{
+        legend:{ position:'right', labels:{ color:'#c9d1d9', font:{size:11}, boxWidth:12, padding:12 } },
+        tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed} repos` } }
+      }
+    }
+  });
+}
+
+function buildCommitChart(weeks) {
+  const labels = weeks.map((_,i) => {
+    if (i%8===0){ const d=new Date(); d.setDate(d.getDate()-(51-i)*7); return d.toLocaleDateString('en',{month:'short'}); }
+    return '';
+  });
+  const data = weeks.map(w=>w.total||0);
+  if (commitChart) commitChart.destroy();
+  commitChart = new Chart(document.getElementById('commit-chart'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Commits', data, backgroundColor:'rgba(56,139,253,.5)', borderColor:'#388bfd', borderWidth:1 }] },
+    options:{
+      ...CHART_DEFAULTS,
+      scales:{
+        x:{ grid:{ color:'rgba(255,255,255,.05)' }, ticks:{ color:'#8b949e', font:{size:10} } },
+        y:{ grid:{ color:'rgba(255,255,255,.05)' }, ticks:{ color:'#8b949e', font:{size:10}, stepSize:1 } }
+      },
+      plugins:{ legend:{ display:false } }
+    }
+  });
+}
+
+function buildSizeChart(repos) {
+  const buckets = { '< 100 KB':0, '100KB–1MB':0, '1MB–10MB':0, '> 10MB':0 };
+  repos.forEach(r => {
+    const kb = r.size;
+    if (kb < 100) buckets['< 100 KB']++;
+    else if (kb < 1000) buckets['100KB–1MB']++;
+    else if (kb < 10000) buckets['1MB–10MB']++;
+    else buckets['> 10MB']++;
+  });
+  const colors = ['#388bfd','#3fb950','#d29922','#f85149'];
+  if (sizeChart) sizeChart.destroy();
+  sizeChart = new Chart(document.getElementById('size-chart'), {
+    type:'pie',
+    data:{ labels:Object.keys(buckets), datasets:[{ data:Object.values(buckets), backgroundColor:colors, borderColor:'#161b22', borderWidth:3 }] },
+    options:{
+      ...CHART_DEFAULTS,
+      plugins:{
+        legend:{ position:'right', labels:{ color:'#c9d1d9', font:{size:11}, boxWidth:12, padding:12 } }
+      }
+    }
+  });
+}
+
+/* ── Heatmap (52 weeks × 7 days) ── */
+function buildHeatmap(weeks) {
+  if (!weeks.length){ document.getElementById('heatmap-container').innerHTML='<span class="empty">No contribution data available.</span>'; return; }
+  const maxTotal = Math.max(...weeks.map(w=>w.total||0), 1);
+  let html = '<div class="heatmap">';
+  weeks.forEach(w=>{
+    const days = w.days || Array(7).fill(0);
+    html += '<div class="heatmap-col">';
+    days.forEach(cnt=>{
+      const ratio = cnt/maxTotal;
+      const level = cnt===0?0: ratio<0.25?1: ratio<0.5?2: ratio<0.75?3:4;
+      const date  = new Date(w.week*1000).toLocaleDateString();
+      html += `<div class="heatmap-cell" data-level="${level}" title="${cnt} commits · ${date}"></div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  document.getElementById('heatmap-container').innerHTML = html;
+}
+
+/* ── Branch list ── */
+function renderBranches(branches, defaultBranch) {
+  const ul = document.getElementById('branch-list');
+  if (!branches.length){ ul.innerHTML='<li><span class="empty">No branches.</span></li>'; return; }
+  ul.innerHTML = branches.slice(0,10).map(b=>`
+    <li>
+      <div style="display:flex;align-items:center;gap:8px;font-size:.85rem">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="#8b949e"><path fill-rule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z"/></svg>
+        <span style="font-family:monospace;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span>
+        ${b.name===defaultBranch ? '<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:var(--blue-dim);color:#fff;font-weight:700;flex-shrink:0">default</span>' : ''}
+        ${b.name.startsWith('claude/') ? '<span style="font-size:.65rem;padding:1px 6px;border-radius:10px;background:var(--purple);color:#fff;font-weight:700;opacity:.8;flex-shrink:0">claude</span>' : ''}
+      </div>
+    </li>
+  `).join('');
+}
+
+/* ── Recent commits ── */
+async function loadRecentCommits(repos) {
+  // pick top 5 most recently pushed repos
+  const recent = repos.filter(r=>!r.fork).sort((a,b)=>new Date(b.pushed_at)-new Date(a.pushed_at)).slice(0,5);
+  const results = [];
+  for (const repo of recent) {
+    try {
+      const commits = await apiFetch(`https://api.github.com/repos/${repo.full_name}/commits?per_page=3`);
+      commits.forEach(c=>{ results.push({ ...c, repoName: repo.name, repoFull: repo.full_name }); });
+    } catch(_){}
+  }
+  results.sort((a,b)=>new Date(b.commit.author.date)-new Date(a.commit.author.date));
+  const ul = document.getElementById('commit-list');
+  if (!results.length){ ul.innerHTML='<li><span class="empty">No commits found.</span></li>'; return; }
+  ul.innerHTML = results.slice(0,12).map(c=>`
+    <li>
+      <div class="commit-top">
+        <a class="commit-sha" href="${c.html_url}" target="_blank" rel="noopener">${c.sha.slice(0,7)}</a>
+        <span class="commit-repo">${esc(c.repoName)}</span>
+        <span class="commit-meta" style="margin-left:auto">${timeAgo(c.commit.author.date)}</span>
+      </div>
+      <div class="commit-msg">${esc(c.commit.message.split('\n')[0])}</div>
+      <div class="commit-meta">${esc(c.commit.author.name)}</div>
+    </li>
+  `).join('');
+}
+
+/* ── Repo cards ── */
+function renderRepoCard(r) {
+  const stars = r.stargazers_count;
+  const forks = r.forks_count;
+  const lang  = r.language || '';
+  return `
+    <div class="repo-card" data-private="${r.private}" data-fork="${r.fork}">
+      <div class="repo-card-header">
+        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 010-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8z"/></svg>
+        <a class="repo-name" href="${r.html_url}" target="_blank" rel="noopener">${esc(r.name)}</a>
+        ${r.private ? '<span class="repo-private">Private</span>' : ''}
+        ${r.fork ? '<span class="repo-private">Fork</span>' : ''}
+      </div>
+      ${r.description ? `<div class="repo-desc">${esc(r.description)}</div>` : ''}
+      <div class="repo-meta">
+        ${lang ? `<span class="repo-meta-item"><span class="lang-dot" style="background:${langColor(lang)}"></span>${esc(lang)}</span>` : ''}
+        ${stars ? `<span class="repo-meta-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="var(--yellow)"><path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 11.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/></svg> ${stars}</span>` : ''}
+        ${forks ? `<span class="repo-meta-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="#8b949e"><path fill-rule="evenodd" d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg> ${forks}</span>` : ''}
+        <span class="repo-meta-item" style="margin-left:auto">${timeAgo(r.pushed_at)}</span>
+      </div>
+      ${r.topics&&r.topics.length ? `<div class="repo-topics">${r.topics.slice(0,4).map(t=>`<span class="topic">${esc(t)}</span>`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+let currentFilter = 'all';
+function filterRepos(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRepos(allRepos);
+}
+function renderRepos(repos) {
+  let filtered = repos;
+  if (currentFilter==='public')  filtered = repos.filter(r=>!r.private);
+  if (currentFilter==='private') filtered = repos.filter(r=>r.private);
+  if (currentFilter==='forked')  filtered = repos.filter(r=>r.fork);
+  filtered.sort((a,b)=>new Date(b.pushed_at)-new Date(a.pushed_at));
+  const grid = document.getElementById('repo-grid');
+  if (!filtered.length) { grid.innerHTML='<span class="empty">No repositories found.</span>'; return; }
+  grid.innerHTML = filtered.map(renderRepoCard).join('');
+}
+
+/* ── Stats row ── */
+function renderStats(user, repos) {
+  const stars = repos.reduce((s,r)=>s+r.stargazers_count, 0);
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card"><div class="val">${repos.length}</div><div class="lbl">Repositories</div></div>
+    <div class="stat-card"><div class="val">${stars.toLocaleString()}</div><div class="lbl">Stars Earned</div></div>
+    <div class="stat-card"><div class="val">${user.followers.toLocaleString()}</div><div class="lbl">Followers</div></div>
+    <div class="stat-card"><div class="val">${user.following.toLocaleString()}</div><div class="lbl">Following</div></div>
+    <div class="stat-card"><div class="val">${user.public_gists}</div><div class="lbl">Public Gists</div></div>
+  `;
+}
+
+/* ── Profile ── */
+function renderProfile(user) {
+  document.getElementById('avatar').src = user.avatar_url;
+  document.getElementById('profile-name').textContent = user.name || user.login;
+  if (user.bio) document.getElementById('profile-bio').textContent = user.bio;
+  const links = [`<a href="${user.html_url}" target="_blank" rel="noopener">github.com/${user.login}</a>`];
+  if (user.blog) links.push(`<a href="${user.blog.startsWith('http')?user.blog:'https://'+user.blog}" target="_blank" rel="noopener">${user.blog}</a>`);
+  if (user.location) links.push(`<span style="color:var(--dim)">📍 ${esc(user.location)}</span>`);
+  document.getElementById('profile-links').innerHTML = links.join('');
+}
+
+/* ── Main load ── */
+async function loadAll() {
+  setAuthStatus();
+  try {
+    /* User profile */
+    const user = await apiFetch(`https://api.github.com/users/${OWNER}`);
+    renderProfile(user);
+
+    /* Repos — use /user/repos to get private ones when authed */
+    const repoUrl = getToken()
+      ? `https://api.github.com/user/repos?affiliation=owner,collaborator`
+      : `https://api.github.com/users/${OWNER}/repos`;
+    allRepos = await apiPaged(repoUrl);
+    renderStats(user, allRepos);
+    renderRepos(allRepos);
+    buildLangChart(allRepos);
+    buildSizeChart(allRepos);
+
+    /* Branches for this repo specifically */
+    try {
+      const [branches, repoMeta] = await Promise.all([
+        apiFetch(`https://api.github.com/repos/${OWNER}/${OWNER}/branches?per_page=30`),
+        apiFetch(`https://api.github.com/repos/${OWNER}/${OWNER}`)
+      ]);
+      renderBranches(branches, repoMeta.default_branch);
+    } catch(_){ document.getElementById('branch-list').innerHTML='<li><span class="empty">Branch data unavailable.</span></li>'; }
+
+    /* Commit activity for this repo */
+    try {
+      const stats = await apiFetch(`https://api.github.com/repos/${OWNER}/${OWNER}/stats/commit_activity`);
+      if (Array.isArray(stats)) { buildCommitChart(stats); buildHeatmap(stats); }
+    } catch(_){}
+
+    /* Recent commits across repos */
+    await loadRecentCommits(allRepos);
+
+    document.getElementById('footer-update').textContent = `Last updated: ${new Date().toLocaleString()} · `;
+
+  } catch(err) {
+    // Log only the error message (never the token — it travels only in headers, never in URLs)
+    document.getElementById('footer-update').textContent = `Error loading data: ${err.message}`;
+  }
+}
+
+/* ── Boot ── */
+initCharts();
+// pre-fill token if saved, but don't show the value
+setAuthStatus();
+loadAll();
+setInterval(loadAll, 120000); // refresh every 2 min
+</script>
+</body>
+</html>
