@@ -1,0 +1,46 @@
+name: Generate Achievements Metrics
+
+# Renders a GitHub "achievements" panel (a reliable, self-hosted replacement
+# for the flaky github-profile-trophy service) as an SVG that is committed to
+# this repo and served via raw.githubusercontent.com — just like the snake.
+#
+# SETUP (one-time): create a classic Personal Access Token and add it as a
+# repository secret named METRICS_TOKEN.
+#   • github.com/settings/tokens -> Generate new token (classic)
+#   • No scopes are required for public data (tick "public_repo" only if you
+#     want private contributions counted).
+#   • Repo: Settings -> Secrets and variables -> Actions -> New secret
+#         Name: METRICS_TOKEN   Value: <the token>
+# The SVG is pushed back to the repo using the built-in GITHUB_TOKEN, so the
+# PAT itself never needs write scope.
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate achievements SVG
+        uses: lowlighter/metrics@latest
+        with:
+          # PAT for reading the GitHub API (no scopes needed for public data)
+          token: ${{ secrets.METRICS_TOKEN }}
+          # Push the generated file with the automatic token (has contents:write)
+          committer_token: ${{ github.token }}
+
+          filename: metrics-achievements.svg
+          # Drop the default header/activity sections — we only want trophies
+          base: ""
+          # Achievements = the trophy-equivalent panel
+          plugin_achievements: yes
+          plugin_achievements_threshold: C
+          plugin_achievements_secrets: yes
+          plugin_achievements_display: detailed
+          plugin_achievements_limit: 0
