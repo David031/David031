@@ -133,22 +133,6 @@ fun_fact:  "This profile is itself a live dashboard."
 
 ---
 
-<!-- ============================ TROPHIES ============================ -->
-## 🏆 Trophy Case
-
-<div align="center">
-
-<!-- Trophy case (solid cards so trophies stay visible; adapts to light/dark) -->
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github-profile-trophy.vercel.app/?username=David031&theme=tokyonight&no-frame=true&column=4&row=2&margin-w=8&margin-h=8" />
-  <source media="(prefers-color-scheme: light)" srcset="https://github-profile-trophy.vercel.app/?username=David031&theme=flat&no-frame=true&column=4&row=2&margin-w=8&margin-h=8" />
-  <img width="100%" src="https://github-profile-trophy.vercel.app/?username=David031&theme=tokyonight&no-frame=true&column=4&row=2&margin-w=8&margin-h=8" alt="trophies" />
-</picture>
-
-</div>
-
----
-
 <!-- ============================ LIVE DASHBOARD ============================ -->
 ## 🖥️ Live Interactive Dashboard
 
