@@ -133,19 +133,6 @@ fun_fact:  "This profile is itself a live dashboard."
 
 ---
 
-<!-- ============================ LIVE DASHBOARD ============================ -->
-## 🖥️ Live Interactive Dashboard
-
-A richer, fully interactive dashboard (language breakdown, commit charts,
-repo cards, contribution heatmap, branch status) lives in
-[`index.html`](./index.html).
-
-> **To view it live:** enable **GitHub Pages** for this repo
-> (Settings → Pages → Branch: `main` → `/root`), then open
-> `https://david031.github.io/David031/`.
-
----
-
 <!-- ============================ CONNECT ============================ -->
 ## 🤝 Connect With Me
 
