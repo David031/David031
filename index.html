@@ -483,7 +483,7 @@ function timeAgo(d) {
   if (s<86400) return Math.floor(s/3600)+'h ago';
   return Math.floor(s/86400)+'d ago';
 }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 /* ── Charts ── */
 const CHART_DEFAULTS = {
@@ -684,13 +684,16 @@ function renderProfile(user) {
   document.getElementById('profile-name').textContent = user.name || user.login;
   if (user.bio) document.getElementById('profile-bio').textContent = user.bio;
   const links = [`<a href="${user.html_url}" target="_blank" rel="noopener">github.com/${user.login}</a>`];
-  if (user.blog) links.push(`<a href="${user.blog.startsWith('http')?user.blog:'https://'+user.blog}" target="_blank" rel="noopener">${user.blog}</a>`);
+  if (user.blog) links.push(`<a href="${esc(user.blog.startsWith('http')?user.blog:'https://'+user.blog)}" target="_blank" rel="noopener">${esc(user.blog)}</a>`);
   if (user.location) links.push(`<span style="color:var(--dim)">📍 ${esc(user.location)}</span>`);
   document.getElementById('profile-links').innerHTML = links.join('');
 }
 
 /* ── Main load ── */
+let loading = false;
 async function loadAll() {
+  if (loading) return;   // don't stack refreshes if a slow load is in flight
+  loading = true;
   setAuthStatus();
   try {
     /* User profile */
@@ -730,6 +733,8 @@ async function loadAll() {
   } catch(err) {
     // Log only the error message (never the token — it travels only in headers, never in URLs)
     document.getElementById('footer-update').textContent = `Error loading data: ${err.message}`;
+  } finally {
+    loading = false;
   }
 }
 
@@ -738,7 +743,9 @@ initCharts();
 // pre-fill token if saved, but don't show the value
 setAuthStatus();
 loadAll();
-setInterval(loadAll, 120000); // refresh every 2 min
+// Each load makes ~10-14 API calls and the unauthenticated limit is 60/hr,
+// so refresh sparingly and only while the tab is visible.
+setInterval(() => { if (!document.hidden) loadAll(); }, 15 * 60 * 1000);
 </script>
 </body>
 </html>

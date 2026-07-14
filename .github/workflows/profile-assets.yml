@@ -1,0 +1,59 @@
+name: Generate Profile Assets
+
+# Generates all README images that are served from this repo:
+#   - contribution snake  (Platane/snk)
+#   - stats & language cards (.github/scripts/generate_stats.py)
+# Everything is pushed together to the `output` branch and served via
+# raw.githubusercontent.com — no third-party image hosting involved.
+#
+# NOTE: keep this as a single workflow. The push step force-replaces the
+# `output` branch, so a second workflow writing there would wipe these files.
+
+on:
+  # Run automatically every 12 hours
+  schedule:
+    - cron: "0 */12 * * *"
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+  # Regenerate whenever main is updated
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-assets
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate stats & language cards
+        run: python3 .github/scripts/generate_stats.py --user "$OWNER" --out dist
+        env:
+          OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate snake SVGs
+        uses: Platane/snk@v3
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          outputs: |
+            dist/snake.svg
+            dist/snake-dark.svg?palette=github-dark
+            dist/snake.gif
+
+      - name: Push to output branch
+        uses: crazy-max/ghaction-github-pages@v4
+        with:
+          target_branch: output
+          build_dir: dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
